@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+      "baseUrl": ".",
+      "outDir": "dist",
+      "jsx": "react",
+      "lib": ["dom", "es2015"],
+      "esModuleInterop": true,
+      "module": "Node16",
+      "moduleResolution": "node16",
+      "sourceMap": true
+    },
+    "include": [
+      "**/*.ts",
+      "**/*.tsx"
+    ]
+  }
