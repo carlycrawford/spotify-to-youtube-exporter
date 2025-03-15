@@ -40,7 +40,7 @@ function TracksList(props: { tracks, playlistTitle, playlistDescription }) {
     const searchYoutubeForSong = async (track, playlistId) => {
         const config = {
             headers: {
-                'X-Goog-Api-Key': 'AIzaSyATBvPa61Nn0OiS_bg-npZCTm2itloudVI'
+                'X-Goog-Api-Key': '*'
             }
         };
 
