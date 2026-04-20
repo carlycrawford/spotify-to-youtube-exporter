@@ -1,0 +1,93 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "copy-webpack-plugin": {
+      "name": "copy-webpack-plugin",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        "serialize-javascript"
+      ],
+      "effects": [],
+      "range": "4.3.0 - 13.0.1",
+      "nodes": [
+        "node_modules/copy-webpack-plugin"
+      ],
+      "fixAvailable": {
+        "name": "copy-webpack-plugin",
+        "version": "14.0.0",
+        "isSemVerMajor": true
+      }
+    },
+    "serialize-javascript": {
+      "name": "serialize-javascript",
+      "severity": "high",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1113686,
+          "name": "serialize-javascript",
+          "dependency": "serialize-javascript",
+          "title": "Serialize JavaScript is Vulnerable to RCE via RegExp.flags and Date.prototype.toISOString()",
+          "url": "https://github.com/advisories/GHSA-5c6j-r48x-rmvq",
+          "severity": "high",
+          "cwe": [
+            "CWE-96"
+          ],
+          "cvss": {
+            "score": 8.1,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
+          },
+          "range": "<=7.0.2"
+        },
+        {
+          "source": 1115723,
+          "name": "serialize-javascript",
+          "dependency": "serialize-javascript",
+          "title": "Serialize JavaScript has CPU Exhaustion Denial of Service via crafted array-like objects",
+          "url": "https://github.com/advisories/GHSA-qj8w-gfj5-8c6v",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-400",
+            "CWE-834"
+          ],
+          "cvss": {
+            "score": 5.9,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<7.0.5"
+        }
+      ],
+      "effects": [
+        "copy-webpack-plugin"
+      ],
+      "range": "<=7.0.4",
+      "nodes": [
+        "node_modules/serialize-javascript"
+      ],
+      "fixAvailable": {
+        "name": "copy-webpack-plugin",
+        "version": "14.0.0",
+        "isSemVerMajor": true
+      }
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 2,
+      "critical": 0,
+      "total": 2
+    },
+    "dependencies": {
+      "prod": 206,
+      "dev": 223,
+      "optional": 22,
+      "peer": 39,
+      "peerOptional": 0,
+      "total": 488
+    }
+  }
+}

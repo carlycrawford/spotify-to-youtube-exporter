@@ -1,10 +1,8 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import './styles/style.css';
-import axios from 'axios';
 import { Route, Routes } from 'react-router-dom';
 import LoginSpotify from './Containers/LoginSpotify';
 import Home from './Containers/Home';
-import CallbackSpotify from './Containers/CallbackYoutube';
 import LoginYoutube from './Containers/LoginYoutube';
 import CallbackYoutube from './Containers/CallbackYoutube';
 

@@ -1,10 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
 @tailwind utilities;
+
+:root {
+  --bg: #0b1218;
+  --bg-soft: #111a22;
+  --surface: rgba(17, 26, 34, 0.72);
+  --surface-strong: #1b2733;
+  --text: #eaf3f9;
+  --muted: #8ca4b8;
+  --brand: #1ed760;
+  --brand-2: #5be4ff;
+  --accent: #ffbd59;
+  --border: rgba(140, 164, 184, 0.28);
+  --danger: #ff6a6a;
+}
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+  color: var(--text);
+  background: radial-gradient(circle at 10% 10%, #143246 0%, transparent 40%),
+    radial-gradient(circle at 85% 15%, #2a244f 0%, transparent 33%),
+    linear-gradient(140deg, #0b1218 0%, #0f1b24 45%, #101926 100%);
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -12,4 +31,72 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 1.25rem;
+}
+
+.glass-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.22);
+}
+
+.headline {
+  font-family: 'Space Grotesk', sans-serif;
+  letter-spacing: 0.01em;
+}
+
+.step-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.75rem;
+  color: var(--brand-2);
+  border: 1px solid rgba(91, 228, 255, 0.35);
+  background: rgba(91, 228, 255, 0.1);
+}
+
+.primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(30, 215, 96, 0.5);
+  background: linear-gradient(110deg, #19b850 0%, #1ed760 45%, #53f08c 100%);
+  color: #04220f;
+  font-weight: 700;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primary-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(30, 215, 96, 0.3);
+}
+
+.muted-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.8rem;
+  border: 1px solid var(--border);
+  background: rgba(17, 26, 34, 0.8);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.section-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
 }

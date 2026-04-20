@@ -5,30 +5,36 @@ export interface IPlaylistTileProps {
     name: string;
     imageHref: string;
     length: number;
+    selected?: boolean;
     onClick: () => void
 }
 
-function PlaylistTile(props: { props: IPlaylistTileProps }) {
+function PlaylistTile(props: IPlaylistTileProps) {
 
-    const { name, imageHref, length, onClick } = props.props;
+    const { name, imageHref, length, onClick, selected } = props;
 
     return (
-        <>
-            <div className="w-sm h-sm m-5 bg-indigo-500 border-gray-200 dark:bg-indigo-950 rounded-lg shadow-sm" onClick={() => onClick()}>
-
-                <img className="w-sm h-sm rounded-t-lg" src={imageHref} alt="" />
-
-                <div className="p-5">
-
-                    <h5 className="flex text-center items-center mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{name}</h5><br/>
-                    <p className="flex text-center items-center px-3 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-                        Total songs: {length}
-                    </p>
-                </div>
+        <button
+            className={`group w-full overflow-hidden rounded-2xl border p-3 text-left transition ${selected
+                ? 'border-emerald-300 bg-emerald-400/10'
+                : 'border-white/10 bg-white/5 hover:border-white/25 hover:bg-white/10'
+            }`}
+            onClick={() => onClick()}
+            type="button"
+        >
+            <div className="aspect-square w-full overflow-hidden rounded-xl bg-slate-900/70">
+                {imageHref ? (
+                    <img className="h-full w-full object-cover transition duration-300 group-hover:scale-105" src={imageHref} alt={name} />
+                ) : (
+                    <div className="flex h-full w-full items-center justify-center text-4xl">🎧</div>
+                )}
             </div>
 
-
-        </>
+            <div className="mt-3">
+                <h5 className="line-clamp-2 headline text-base font-bold text-white">{name}</h5>
+                <p className="mt-2 text-sm text-slate-300">{length} songs</p>
+            </div>
+        </button>
     );
 }
 
