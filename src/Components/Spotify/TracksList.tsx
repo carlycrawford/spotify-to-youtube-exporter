@@ -57,6 +57,30 @@ function TracksList(props: TracksListProps) {
         }
     }
 
+    // Artist-level cache: artist name -> (normalized youtube title -> videoId)
+    const initializeArtistCache = (): Map<string, Map<string, string>> => {
+        try {
+            const stored = localStorage.getItem('youtube_artist_cache');
+            if (!stored) return new Map();
+            const parsed: [string, [string, string][]][] = JSON.parse(stored);
+            return new Map(parsed.map(([artist, songs]) => [artist, new Map(songs)]));
+        } catch {
+            return new Map();
+        }
+    }
+    const artistCacheRef = useRef<Map<string, Map<string, string>>>(initializeArtistCache());
+
+    const persistArtistCache = () => {
+        try {
+            const serializable = Array.from(artistCacheRef.current.entries()).map(
+                ([artist, songs]) => [artist, Array.from(songs.entries())]
+            );
+            localStorage.setItem('youtube_artist_cache', JSON.stringify(serializable));
+        } catch (error) {
+            console.warn('Failed to persist artist cache:', error);
+        }
+    }
+
     const getUniqueTracks = (sourceTracks: SpotifyTrackItem[]): SpotifyTrackItem[] => {
         const seen = new Set<string>();
         const unique: SpotifyTrackItem[] = [];
@@ -176,8 +200,16 @@ function TracksList(props: TracksListProps) {
             
             setStatusMessage('Export in progress...');
 
+            // Pre-compute how many tracks each artist has so we can decide whether
+            // a single artist-batch search is worth the quota cost (only if 2+ tracks)
+            const artistTrackCount = new Map<string, number>();
+            for (const t of uniqueTracks) {
+                const key = t.track?.artists[0]?.name.trim().toLowerCase() ?? '';
+                if (key) artistTrackCount.set(key, (artistTrackCount.get(key) ?? 0) + 1);
+            }
+
             for (let i = 0; i < uniqueTracks.length; i++) {
-                await searchYoutubeForSong(uniqueTracks[i], playlistId, googleToken, existingVideoIds);
+                await searchYoutubeForSong(uniqueTracks[i], playlistId, googleToken, existingVideoIds, artistTrackCount);
                 setExportedCount(i + 1);
             }
 
@@ -192,7 +224,101 @@ function TracksList(props: TracksListProps) {
         }
     }
 
-    const searchYoutubeForSong = async (track: SpotifyTrackItem, playlistId: string, googleToken: string, existingVideoIds: Set<string>) => {
+    const addVideoToPlaylist = async (videoId: string, playlistId: string, googleToken: string, existingVideoIds: Set<string>) => {
+        if (existingVideoIds.has(videoId)) {
+            return;
+        }
+        const payload = {
+            snippet: {
+                playlistId: playlistId,
+                resourceId: {
+                    kind: 'youtube#video',
+                    videoId: videoId
+                }
+            }
+        };
+        try {
+            await axios.post('https://www.googleapis.com/youtube/v3/playlistItems?part=snippet', payload, {
+                headers: {
+                    Authorization: `Bearer ${googleToken}`
+                }
+            });
+            existingVideoIds.add(videoId);
+        } catch (error) {
+            if (axios.isAxiosError(error) && error.response?.status === 409) {
+                // Video already in playlist — treat as success
+                existingVideoIds.add(videoId);
+            } else {
+                throw error;
+            }
+        }
+    }
+
+    const normalizeYoutubeTitle = (title: string): string => {
+        return title
+            .toLowerCase()
+            .replace(/\(official.*?\)/gi, '')
+            .replace(/\[official.*?\]/gi, '')
+            .replace(/\(lyrics.*?\)/gi, '')
+            .replace(/\[lyrics.*?\]/gi, '')
+            .replace(/\(audio.*?\)/gi, '')
+            .replace(/\[audio.*?\]/gi, '')
+            .replace(/\(music video.*?\)/gi, '')
+            .replace(/\(ft\..*?\)/gi, '')
+            .replace(/\(feat\..*?\)/gi, '')
+            .replace(/\s[-|]\s.*$/, '') // strip "Artist - Song Title" prefix/suffix
+            .trim();
+    }
+
+    const fetchAndCacheArtistSongs = async (artistKey: string, apiKey: string) => {
+        const artistSongs = new Map<string, string>();
+        try {
+            const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+                params: {
+                    part: 'snippet',
+                    type: 'video',
+                    maxResults: '50',
+                    q: artistKey,
+                    key: apiKey
+                }
+            });
+
+            const items: any[] = response.data.items ?? [];
+            for (const item of items) {
+                const videoId: string | undefined = item.id?.videoId;
+                const rawTitle: string = item.snippet?.title ?? '';
+                const normalizedTitle = normalizeYoutubeTitle(rawTitle);
+                if (videoId && normalizedTitle) {
+                    artistSongs.set(normalizedTitle, videoId);
+                }
+            }
+        } catch (error) {
+            console.warn(`Failed to fetch songs for artist "${artistKey}":`, error);
+        }
+
+        artistCacheRef.current.set(artistKey, artistSongs);
+        persistArtistCache();
+    }
+
+    const findVideoInArtistCache = (artistKey: string, songKey: string): string | null => {
+        const artistSongs = artistCacheRef.current.get(artistKey);
+        if (!artistSongs) return null;
+        const normalizedSong = songKey.toLowerCase().trim();
+        for (const [normalizedTitle, videoId] of artistSongs.entries()) {
+            if (normalizedTitle.includes(normalizedSong) || normalizedSong.includes(normalizedTitle)) {
+                return videoId;
+            }
+        }
+        return null;
+    }
+
+    const searchYoutubeForSong = async (
+        track: SpotifyTrackItem,
+        playlistId: string,
+        googleToken: string,
+        existingVideoIds: Set<string>,
+        artistTrackCount: Map<string, number>
+    ) => {
         if (!track.track) {
             return;
         }
@@ -204,95 +330,60 @@ function TracksList(props: TracksListProps) {
         }
 
         const cacheKey = normalizeSearchKey(track);
+        const artistKey = track.track.artists[0]?.name.trim().toLowerCase() ?? '';
+        const songKey = track.track.name.trim().toLowerCase();
+
+        // 1. Check per-song cache
         if (searchCacheRef.current.has(cacheKey)) {
             const cachedVideoId = searchCacheRef.current.get(cacheKey);
-            if (!cachedVideoId) {
-                return;
-            }
-
-            // Skip if video already in playlist
-            if (existingVideoIds.has(cachedVideoId)) {
-                console.log(`Video "${track.track.name}" already in playlist, skipping.`);
-                return;
-            }
-
-            const payload = {
-                snippet: {
-                    playlistId: playlistId,
-                    resourceId: {
-                        kind: 'youtube#video',
-                        videoId: cachedVideoId
-                    }
-                }
-            };
-
-            await axios.post('https://www.googleapis.com/youtube/v3/playlistItems?part=snippet', payload, {
-                headers: {
-                    Authorization: `Bearer ${googleToken}`
-                }
-            });
+            if (!cachedVideoId) return;
+            await addVideoToPlaylist(cachedVideoId, playlistId, googleToken, existingVideoIds);
             return;
         }
 
-        const search = `${track.track.name} ${track.track.artists[0].name}`;
+        let videoId: string | null = null;
 
-        try {
-            const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
-                params: {
-                    part: 'snippet',
-                    type: 'video',
-                    maxResults: '1',
-                    q: search,
-                    key: apiKey
-                }
-            });
+        // 2. Only do artist batch search if this artist has 2+ tracks in the playlist —
+        //    otherwise the batch costs 100 units but helps only one song, same as individual search
+        const artistCount = artistTrackCount.get(artistKey) ?? 1;
+        if (artistCount >= 2) {
+            if (!artistCacheRef.current.has(artistKey)) {
+                await fetchAndCacheArtistSongs(artistKey, apiKey);
+            }
+            videoId = findVideoInArtistCache(artistKey, songKey);
+        }
 
-            const responseData = response.data;
-            const songs = responseData.items ?? [];
-            
-            const song = songs[0];
-
-            if (song) {
-                const videoId = song.id?.videoId;
-
-                searchCacheRef.current.set(cacheKey, videoId ?? null);
-                persistCache();
-
-                if (videoId) {
-                    // Skip if video already in playlist
-                    if (existingVideoIds.has(videoId)) {
-                        console.log(`Video "${track.track.name}" already in playlist, skipping.`);
-                        return;
+        // 3. Fall back to a targeted individual search if artist batch was skipped or missed
+        if (!videoId) {
+            const search = `${track.track.name} ${track.track.artists[0].name}`;
+            try {
+                const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+                    params: {
+                        part: 'snippet',
+                        type: 'video',
+                        maxResults: '1',
+                        q: search,
+                        key: apiKey
                     }
+                });
 
-                    const payload = {
-                        snippet: {
-                            playlistId: playlistId,
-                            resourceId: {
-                                kind: 'youtube#video',
-                                videoId: videoId
-                            }
-                        }
-                    };
-
-                    await axios.post('https://www.googleapis.com/youtube/v3/playlistItems?part=snippet', payload, {
-                        headers: {
-                            Authorization: `Bearer ${googleToken}`
-                        }
-                    });
+                const items = response.data.items ?? [];
+                videoId = items[0]?.id?.videoId ?? null;
+            } catch (error) {
+                if (axios.isAxiosError(error)) {
+                    console.error(`Failed to search for "${track.track.name}":`, error.response?.status, error.response?.data);
+                } else {
+                    console.error(`Failed to search for "${track.track.name}":`, error);
                 }
-            } else {
-                searchCacheRef.current.set(cacheKey, null);
-                persistCache();
             }
-        } catch (error) {
-            if (axios.isAxiosError(error)) {
-                console.error(`Failed to search for "${search}":`, error.response?.status, error.response?.data);
-            } else {
-                console.error(`Failed to search for "${search}":`, error);
-            }
-            searchCacheRef.current.set(cacheKey, null);
-            persistCache();
+        }
+
+        // Cache the per-song result
+        searchCacheRef.current.set(cacheKey, videoId ?? null);
+        persistCache();
+
+        if (videoId) {
+            await addVideoToPlaylist(videoId, playlistId, googleToken, existingVideoIds);
         }
     }
 
