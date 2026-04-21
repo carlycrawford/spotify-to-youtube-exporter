@@ -30,7 +30,7 @@ function LoginSpotifyButton(props: ILoginButtonProps) {
                         type="button"
                         className="primary-btn w-full gap-3 px-5 py-4 text-lg md:w-auto"
                     >
-                        <img className="h-8 w-8" src="./images/Spotify_Primary_Logo_RGB_Green.png" alt="Spotify" />
+                        <img className="h-8 w-8" src="/media/Spotify_Primary_Logo_RGB_Green.png" alt="Spotify" />
                         Login with Spotify
                     </button>
                 </div>
