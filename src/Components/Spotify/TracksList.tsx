@@ -254,6 +254,32 @@ function TracksList(props: TracksListProps) {
         }
     }
 
+    // MusicBrainz rate limit: 1 request per second
+    // Circuit breaker: disable YTMusic proxy for this session if the server is unreachable
+    const ytmusicAvailableRef = useRef<boolean>(true);
+
+    const searchYTMusic = async (songName: string, artistName: string): Promise<string | null> => {
+        if (!ytmusicAvailableRef.current) return null;
+
+        try {
+            const query = `${songName} ${artistName}`;
+            const response = await axios.get('/api/ytmusic/search', {
+                params: { q: query }
+            });
+            return response.data.videoId ?? null;
+        } catch (error) {
+            const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+            if (!status || status === 0 || status === 502 || status === 503) {
+                ytmusicAvailableRef.current = false;
+                console.warn('YTMusic proxy unavailable, falling back to YouTube Data API for all remaining tracks.');
+            } else {
+                console.warn(`YTMusic search failed for "${songName}" by "${artistName}":`, error);
+            }
+        }
+
+        return null;
+    }
+
     const normalizeYoutubeTitle = (title: string): string => {
         return title
             .toLowerCase()
@@ -343,17 +369,21 @@ function TracksList(props: TracksListProps) {
 
         let videoId: string | null = null;
 
-        // 2. Only do artist batch search if this artist has 2+ tracks in the playlist —
-        //    otherwise the batch costs 100 units but helps only one song, same as individual search
-        const artistCount = artistTrackCount.get(artistKey) ?? 1;
-        if (artistCount >= 2) {
-            if (!artistCacheRef.current.has(artistKey)) {
-                await fetchAndCacheArtistSongs(artistKey, apiKey);
+    // 2. YTMusic pre-pass — uses local proxy, no YouTube Data API quota cost
+    videoId = await searchYTMusic(track.track.name, track.track.artists[0].name);
+
+    // 3. Artist batch search if 2+ tracks share an artist and YTMusic missed
+        if (!videoId) {
+            const artistCount = artistTrackCount.get(artistKey) ?? 1;
+            if (artistCount >= 2) {
+                if (!artistCacheRef.current.has(artistKey)) {
+                    await fetchAndCacheArtistSongs(artistKey, apiKey);
+                }
+                videoId = findVideoInArtistCache(artistKey, songKey);
             }
-            videoId = findVideoInArtistCache(artistKey, songKey);
         }
 
-        // 3. Fall back to a targeted individual search if artist batch was skipped or missed
+        // 4. Fall back to YouTube Data API targeted search if all else missed
         if (!videoId) {
             const search = `${track.track.name} ${track.track.artists[0].name}`;
             try {
