@@ -9,6 +9,10 @@
       "allowedRoles": ["anonymous"]
     },
     {
+      "route": "/LoginYoutube",
+      "allowedRoles": ["anonymous"]
+    },
+    {
       "route": "/*",
       "allowedRoles": ["guest"]
     }

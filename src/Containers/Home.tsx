@@ -49,6 +49,18 @@ function Home() {
             return;
         }
 
+        const width = 520;
+        const height = 720;
+        const left = window.screenX + Math.max(0, (window.outerWidth - width) / 2);
+        const top = window.screenY + Math.max(0, (window.outerHeight - height) / 2);
+        const features = `popup=yes,width=${width},height=${height},left=${Math.floor(left)},top=${Math.floor(top)}`;
+        const popup = window.open('', 'spotify_oauth_popup', features);
+
+        if (!popup) {
+            console.error('Spotify popup was blocked by the browser.');
+            return;
+        }
+
         const state = generateRandomState(16);
         const codeVerifier = generateRandomState(96);
         const codeChallenge = await createCodeChallenge(codeVerifier);
@@ -90,17 +102,7 @@ function Home() {
             code_challenge: codeChallenge
         });
 
-        const width = 520;
-        const height = 720;
-        const left = window.screenX + Math.max(0, (window.outerWidth - width) / 2);
-        const top = window.screenY + Math.max(0, (window.outerHeight - height) / 2);
-        const features = `popup=yes,width=${width},height=${height},left=${Math.floor(left)},top=${Math.floor(top)}`;
-        const popup = window.open(`https://accounts.spotify.com/authorize?${params.toString()}`, 'spotify_oauth_popup', features);
-
-        if (!popup) {
-            window.removeEventListener('message', onMessage);
-            console.error('Spotify popup was blocked by the browser.');
-        }
+        popup.location.href = `https://accounts.spotify.com/authorize?${params.toString()}`;
     };
 
     return (
