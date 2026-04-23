@@ -35,14 +35,21 @@ function LoginButton() {
     const [spotifyUsername, setSpotifyUsername] = useState('Spotify user');
 
     useEffect(() => {
+        const params = new URL(window.location.href).searchParams;
+        const code = params.get('code');
+        const state = params.get('state');
+
+        if (window.opener && code && state) {
+            window.opener.postMessage({ type: 'spotify-oauth-callback', code, state }, window.location.origin);
+            window.close();
+            return;
+        }
+
         if (sessionStorage.getItem('spotify_username')) {
             setSpotifyUsername(sessionStorage.getItem('spotify_username') || 'Spotify user');
             return;
         }
 
-        const params = new URL(window.location.href).searchParams;
-        const code = params.get('code');
-        const state = params.get('state');
         const expectedState = sessionStorage.getItem('spotify_oauth_state');
         const codeVerifier = sessionStorage.getItem('spotify_pkce_verifier');
 
