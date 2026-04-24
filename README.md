@@ -1,2 +1,2 @@
-# spotify-to-youtube-exporter
+# playlist-exporter
 A React app which creates a new Youtube playlist from an existing Spotify playlist
